@@ -58,6 +58,19 @@ interface ISetToken {
         returns(uint256[]);
 
     /*
+     * Checks to make sure token is component of Set
+     *
+     * @param  _tokenAddress     Address of token being checked
+     * @return  bool             True if token is component of Set
+     */
+    function tokenIsComponent(
+        address _tokenAddress
+    )
+        external
+        view
+        returns (bool);
+
+    /*
      * Mint set token for given address.
      * Can only be called by authorized contracts.
      *

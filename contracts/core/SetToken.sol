@@ -244,8 +244,8 @@ contract SetToken is
     function tokenIsComponent(
         address _tokenAddress
     )
-        view
         public
+        view
         returns (bool)
     {
         return isComponent[_tokenAddress];

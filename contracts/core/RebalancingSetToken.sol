@@ -578,6 +578,21 @@ contract RebalancingSetToken is
         return units;
     }
 
+    /*
+     * Checks to make sure token is component of Set
+     *
+     * @param  _tokenAddress     Address of token being checked
+     * @return  bool             True if token is component of Set
+     */
+    function tokenIsComponent(
+        address _tokenAddress
+    )
+        public
+        view
+        returns (bool)
+    {
+        return _tokenAddress == currentSet;
+    }
 
     /*
      * Get combinedTokenArray of Rebalancing Set
