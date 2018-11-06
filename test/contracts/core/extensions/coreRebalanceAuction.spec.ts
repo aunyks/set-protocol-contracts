@@ -41,6 +41,7 @@ contract('CoreRebalanceAuction', accounts => {
     deployerAccount,
     managerAccount,
     bidderAccount,
+    nonTrackedSetToken,
   ] = accounts;
 
   let rebalancingSetToken: RebalancingSetTokenContract;
@@ -82,7 +83,7 @@ contract('CoreRebalanceAuction', accounts => {
     constantAuctionPriceCurve = await rebalancingWrapper.deployConstantAuctionPriceCurveAsync(DEFAULT_AUCTION_PRICE);
 
     await coreWrapper.setDefaultStateAndAuthorizationsAsync(coreMock, vault, transferProxy, factory);
-    await coreWrapper.enableFactoryAsync(coreMock, rebalancingFactory);
+    await coreWrapper.registerFactoryAsync(coreMock, rebalancingFactory, true);
   });
 
   afterEach(async () => {
@@ -148,6 +149,16 @@ contract('CoreRebalanceAuction', accounts => {
       );
     }
 
+    describe('when bid is called by an invalid Set Token', async () => {
+      beforeEach(async () => {
+        subjectRebalancingSetToken = nonTrackedSetToken;
+      });
+
+      it('should revert', async () => {
+        await expectRevertError(subject());
+      });
+    });
+
     describe('when bid is called and token is in Default state', async () => {
       it('should revert', async () => {
         await expectRevertError(subject());
@@ -157,6 +168,7 @@ contract('CoreRebalanceAuction', accounts => {
     describe('when bid is called and token is in Proposal State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToProposeAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -172,6 +184,7 @@ contract('CoreRebalanceAuction', accounts => {
     describe('when bid is called and token is in Rebalance State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -293,6 +306,7 @@ contract('CoreRebalanceAuction', accounts => {
     describe('when getBidPrice is called from Proposal State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToProposeAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -308,6 +322,7 @@ contract('CoreRebalanceAuction', accounts => {
     describe('when getBidPrice is called from Rebalance State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -361,6 +376,7 @@ contract('CoreRebalanceAuction', accounts => {
       await coreMock.issue.sendTransactionAsync(currentSetToken.address, amountToIssue);
       await erc20Wrapper.approveTransfersAsync([currentSetToken], transferProxy.address);
       await coreMock.issue.sendTransactionAsync(rebalancingSetToken.address, amountToIssue);
+      await coreMock.setPriceLibraryEnabled.sendTransactionAsync(constantAuctionPriceCurve.address, true);
 
       subjectCaller = bidderAccount;
       subjectQuantity = ether(1);
@@ -383,6 +399,7 @@ contract('CoreRebalanceAuction', accounts => {
     describe('when placeBid is called from Proposal State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToProposeAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -398,6 +415,7 @@ contract('CoreRebalanceAuction', accounts => {
     describe('when placeBid is called from Rebalance State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -478,6 +496,7 @@ contract('CoreRebalanceAuction', accounts => {
     describe('when placeBid is called from Rebalance State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,

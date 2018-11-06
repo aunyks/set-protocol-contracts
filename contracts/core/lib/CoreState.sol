@@ -47,14 +47,17 @@ contract CoreState {
         // Mapping of tracked SetToken factories
         mapping(address => bool) validFactories;
 
-        // Array of tracked SetToken factories
-        address[] factories;
-
         // Mapping of tracked SetTokens
         mapping(address => bool) validSets;
 
         // Array of tracked SetTokens
         address[] setTokens;
+
+        // Mapping of tracked rebalancing price libraries
+        mapping(address => bool) validPriceLibraries;
+
+        // Array of the tracked rebalancing price libraries
+        address[] priceLibraries;
 
         // Mapping of filled Issuance Orders
         mapping(bytes32 => uint) orderFills;
@@ -154,19 +157,6 @@ contract CoreState {
     }
 
     /**
-     * Return array of all enabled factories.
-     *
-     * @return address[]      Array of enabled factories
-     */
-    function factories()
-        public
-        view
-        returns(address[])
-    {
-        return state.factories;
-    }
-
-    /**
      * Return boolean indicating if address is valid Set.
      *
      * @param  _set           Set address
@@ -193,6 +183,35 @@ contract CoreState {
         returns(address[])
     {
         return state.setTokens;
+    }
+
+    /**
+     * Return boolean indicating if address is a valid Rebalancing Price Library.
+     *
+     * @param  _priceLibrary    Price library address
+     * @return bool             Boolean indicating if valid Price Library
+     */
+    function validPriceLibraries(
+        address _priceLibrary
+    )
+        public
+        view
+        returns(bool)
+    {
+        return state.validPriceLibraries[_priceLibrary];
+    }
+
+    /**
+     * Return array of all valid Rebalancing Price Libraries.
+     *
+     * @return address[]      Array of valid Price Libraries
+     */
+    function priceLibraries()
+        public
+        view
+        returns(address[])
+    {
+        return state.priceLibraries;
     }
 
     /**

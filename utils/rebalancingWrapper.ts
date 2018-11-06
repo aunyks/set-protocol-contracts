@@ -186,6 +186,8 @@ export class RebalancingWrapper {
     return setTokenArray;
   }
 
+  /* ============ Price Libraries ============ */
+
   public async deployLinearAuctionPriceCurveAsync(
     from: Address = this._tokenOwnerAddress
   ): Promise<LinearAuctionPriceCurveContract> {
@@ -211,6 +213,19 @@ export class RebalancingWrapper {
     return new ConstantAuctionPriceCurveContract(
       new web3.eth.Contract(truffleConstantAuctionPriceCurve.abi, truffleConstantAuctionPriceCurve.address),
       { from, gas: DEFAULT_GAS },
+    );
+  }
+
+  public async setPriceLibraryEnabledAsync(
+    core: CoreLikeContract,
+    priceLibrary: ConstantAuctionPriceCurveContract | LinearAuctionPriceCurveContract,
+    enabled: boolean,
+    from: Address = this._tokenOwnerAddress
+  ): Promise<void> {
+    await core.setPriceLibraryEnabled.sendTransactionAsync(
+      priceLibrary.address,
+      enabled,
+      { from }
     );
   }
 
@@ -246,6 +261,7 @@ export class RebalancingWrapper {
   }
 
   public async defaultTransitionToProposeAsync(
+    core: CoreLikeContract,
     rebalancingSetToken: RebalancingSetTokenContract,
     newRebalancingSetToken: Address,
     auctionLibrary: Address,
@@ -255,6 +271,13 @@ export class RebalancingWrapper {
     const curveCoefficient = ether(1);
     const auctionStartPrice = new BigNumber(500);
     const auctionPriceDivisor = new BigNumber(1000);
+
+    // Approve price library
+    await core.setPriceLibraryEnabled.sendTransactionAsync(
+      auctionLibrary,
+      true,
+      { from: this._tokenOwnerAddress, gas: DEFAULT_GAS}
+    );
 
     // Transition to propose
     await this._blockchain.increaseTimeAsync(ONE_DAY_IN_SECONDS.add(1));
@@ -269,6 +292,7 @@ export class RebalancingWrapper {
   }
 
   public async defaultTransitionToRebalanceAsync(
+    core: CoreLikeContract,
     rebalancingSetToken: RebalancingSetTokenContract,
     newRebalancingSetToken: Address,
     auctionLibrary: Address,
@@ -276,6 +300,7 @@ export class RebalancingWrapper {
   ): Promise<void> {
     // Transition to propose
     await this.defaultTransitionToProposeAsync(
+      core,
       rebalancingSetToken,
       newRebalancingSetToken,
       auctionLibrary,

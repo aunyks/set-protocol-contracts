@@ -15,7 +15,7 @@ import {
   VaultContract
 } from './contracts';
 import { BigNumber } from 'bignumber.js';
-import { DEFAULT_GAS } from './constants';
+import { DEFAULT_GAS, ONE_DAY_IN_SECONDS } from './constants';
 import { extractNewSetTokenAddressFromLogs } from './contract_logs/core';
 import {
   getWeb3,
@@ -122,10 +122,14 @@ export class CoreWrapper {
 
   public async deployRebalancingSetTokenFactoryAsync(
     coreAddress: Address,
+    minimumRebalanceInterval: BigNumber = ONE_DAY_IN_SECONDS,
+    minimumProposalPeriod: BigNumber = ONE_DAY_IN_SECONDS,
     from: Address = this._tokenOwnerAddress
   ): Promise<RebalancingSetTokenFactoryContract> {
     const truffleTokenFactory = await RebalancingSetTokenFactory.new(
       coreAddress,
+      minimumRebalanceInterval,
+      minimumProposalPeriod,
       { from },
     );
 
@@ -165,6 +169,7 @@ export class CoreWrapper {
     const encodedName = SetUtils.stringToBytes(name);
     const encodedSymbol = SetUtils.stringToBytes(symbol);
 
+    // Creates but does not register the Set with Core as enabled
     const truffleSetToken = await SetToken.new(
       factory,
       componentAddresses,
@@ -252,13 +257,15 @@ export class CoreWrapper {
 
   /* ============ CoreInternal Extension ============ */
 
-  public async enableFactoryAsync(
+  public async registerFactoryAsync(
     core: CoreLikeContract,
     setTokenFactory: SetTokenFactoryContract | RebalancingSetTokenFactoryContract,
+    enabled: boolean,
     from: Address = this._contractOwnerAddress,
   ) {
-    await core.enableFactory.sendTransactionAsync(
+    await core.registerFactory.sendTransactionAsync(
       setTokenFactory.address,
+      enabled,
       { from }
     );
   }
@@ -275,8 +282,9 @@ export class CoreWrapper {
     this.addAuthorizationAsync(vault, core.address);
     this.addAuthorizationAsync(transferProxy, core.address);
 
-    await core.enableFactory.sendTransactionAsync(
+    await core.registerFactory.sendTransactionAsync(
       setTokenFactory.address,
+      true,
       { from },
     );
   }
@@ -340,6 +348,7 @@ export class CoreWrapper {
     const encodedName = SetUtils.stringToBytes(name);
     const encodedSymbol = SetUtils.stringToBytes(symbol);
 
+    // Creates and registers the Set with Core as enabled
     const txHash = await core.create.sendTransactionAsync(
       factory,
       componentAddresses,

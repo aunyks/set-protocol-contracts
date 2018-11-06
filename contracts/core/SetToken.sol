@@ -134,7 +134,7 @@ contract SetToken is
         }
 
         // This is the minimum natural unit possible for a Set with these components.
-        require(_naturalUnit >= uint(10) ** (uint256(18).sub(minDecimals)), "INVALID_NATURAL_UNIT");
+        require(_naturalUnit >= uint256(10) ** (uint256(18).sub(minDecimals)), "INVALID_NATURAL_UNIT");
 
         factory = _factory;
         naturalUnit = _naturalUnit;
@@ -203,7 +203,7 @@ contract SetToken is
      * @return  componentAddresses       Array of component tokens
      */
     function getComponents()
-        public
+        external
         view
         returns(address[])
     {
@@ -222,7 +222,7 @@ contract SetToken is
      * @return  units       Array of component units
      */
     function getUnits()
-        public
+        external
         view
         returns(uint256[])
     {

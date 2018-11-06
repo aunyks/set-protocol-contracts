@@ -54,6 +54,21 @@ export function IssuanceComponentDeposited(
   };
 }
 
+export function FactoryRegistrationChanged(
+  _coreAddress: Address,
+  _factory: Address,
+  _status: boolean,
+): Log {
+  return {
+    event: 'FactoryRegistrationChanged',
+    address: _coreAddress,
+    args: {
+      _factory,
+      _status,
+    },
+  };
+}
+
 export function ExchangeRegistered(
   _coreAddress: Address,
   _exchangeId: BigNumber,
@@ -65,6 +80,21 @@ export function ExchangeRegistered(
     args: {
       _exchangeId,
       _exchange,
+    },
+  };
+}
+
+export function SetRegistrationChanged(
+  _coreAddress: Address,
+  _set: Address,
+  _status: boolean,
+): Log {
+  return {
+    event: 'SetRegistrationChanged',
+    address: _coreAddress,
+    args: {
+      _set,
+      _status,
     },
   };
 }

@@ -34,6 +34,27 @@ contract CoreInternal is
 {
     using AddressArrayUtils for address[];
 
+    /* ============ Events ============ */
+
+    // Logs registration of new exchange conforming to IExchangeWrapper
+    event ExchangeRegistered(
+        uint8 _exchangeId,
+        address _exchange
+    );
+
+    // Logs factory registration change. Factory must conform to ISetFactory
+    event FactoryRegistrationChanged(
+        address _factory,
+        bool _status
+    );
+
+    // Logs a change in the registration of a Set
+    event SetRegistrationChanged(
+        address _set,
+        bool _status
+    );
+
+    // Logs when the protocol fee status has been updated
     event FeeStatusChange(
         address _sender,
         bool _newStatus
@@ -42,66 +63,110 @@ contract CoreInternal is
     /* ============ External Functions ============ */
 
     /**
-     * Add a factory to the mapping of tracked factories. Can only be set by
-     * owner of Core.
+     * Add or remove a factory to the mapping of tracked factories. Can only be set by
+     * owner of Core
      *
-     * @param  _factory   The address of the SetTokenFactory to enable
+     * @param  _factory   Address of the contract conforming to ISetFactory
+     * @param  _enabled   Enable or disable the factory
      */
-    function enableFactory(
-        address _factory
+    function registerFactory(
+        address _factory,
+        bool _enabled
     )
         external
         onlyOwner
     {
-        // Mark as true in validFactories mapping
-        state.validFactories[_factory] = true;
+        state.validFactories[_factory] = _enabled;
 
-        // Add to factories array
-        state.factories.push(_factory);
+        emit FactoryRegistrationChanged(
+            _factory,
+            _enabled
+        );
     }
 
     /**
-     * Disable a factory in the mapping of tracked factories. Can only be disabled
-     * by owner of Core.
+     * Register exchange address into mapping of exchanges
      *
-     * @param  _factory   The address of the SetTokenFactory to disable
+     * @param _exchangeId   Enumeration of exchange
+     * @param _exchange     Exchange address to set
      */
-    function disableFactory(
-        address _factory
+    function registerExchange(
+        uint8 _exchangeId,
+        address _exchange
     )
         external
         onlyOwner
     {
-        // Verify Factory is linked to Core
-        require(state.validFactories[_factory], "UNKNOWN_FACTORY");
+        // Add asset proxy and log registration.
+        state.exchanges[_exchangeId] = _exchange;
 
-        // Mark as false in validFactories mapping
-        state.validFactories[_factory] = false;
-
-        // Find and remove factory from factories array
-        state.factories = state.factories.remove(_factory);
+        // Add asset proxy and log registration.
+        emit ExchangeRegistered(
+            _exchangeId,
+            _exchange
+        );
     }
 
     /**
-     * Disable a set token in the mapping of tracked set tokens. Can only
-     * be disables by owner of Core.
+     * Add or remove a Set to the mapping and array of tracked Sets. Can
+     * only be called by owner of Core.
      *
-     * @param  _set   The address of the SetToken to disable
+     * @param  _set       The address of the Set
+     * @param  _enabled   Enable or disable the Set
      */
-    function disableSet(
-        address _set
+    function registerSet(
+        address _set,
+        bool _enabled
     )
         external
         onlyOwner
     {
-        // Verify Set was created by Core and is enabled
-        require(state.validSets[_set], "UNKNOWN_SET");
+        // Only execute if target enabled state is opposite of current state
+        // This is to prevent arbitrary addresses from being added to validSets
+        // if they were never enabled before
+        if (_enabled != state.validSets[_set]) {
+            if (_enabled) {
+                // Add the Set to setTokens array (we know it doesn't already exist in the array)
+                state.setTokens.push(_set);
+            } else {
+                // Remove the Set from setTokens array
+                state.setTokens = state.setTokens.remove(_set);
+            }
 
-        // Mark as false in validSet mapping
-        state.validSets[_set] = false;
+            // Mark the Set respectively in validSets mapping
+            state.validSets[_set] = _enabled;
+        }
 
-        // Find and remove from setTokens array
-        state.setTokens = state.setTokens.remove(_set);
+        emit SetRegistrationChanged(
+            _set,
+            _enabled
+        );
+    }
+
+    /**
+     * Adds or removes a price library to the mapping of tracked price libraries. Can only be mutated by
+     * owner of Core
+     *
+     * @param  _priceLibrary   Address of contract Price Library to enable or disable
+     * @param  _enabled        Whether the pricing library is enabled for use in proposal cycle
+     */
+    function setPriceLibraryEnabled(
+        address _priceLibrary,
+        bool _enabled
+    )
+        external
+        onlyOwner
+    {
+        // Mark as true or false in validPriceLibraries mapping
+        state.validPriceLibraries[_priceLibrary] = _enabled;
+
+        if (_enabled) {
+            // Add to priceLibraries array
+            state.priceLibraries.push(_priceLibrary);
+        } else {
+            // Remove from priceLibraries array
+            state.priceLibraries = state.priceLibraries.remove(_priceLibrary);
+        }
     }
 
     /**

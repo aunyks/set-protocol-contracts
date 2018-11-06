@@ -35,7 +35,8 @@ import { IVault } from "../interfaces/IVault.sol";
 
 contract CoreRebalanceAuction is
     ICoreAccounting,
-    CoreState
+    CoreState,
+    ReentrancyGuard
 {
     /**
      * Bid on rebalancing a given quantity of sets held by a rebalancing token
@@ -48,9 +49,14 @@ contract CoreRebalanceAuction is
         uint256 _quantity
     )
         external
+        nonReentrant
     {
-        // Get amount of tokens to transfer to instantiate arrays
         IRebalancingSetToken rebalancingSetToken = IRebalancingSetToken(_rebalancingSetToken);
+
+        // Make sure the rebalancingSetToken is tracked by Core
+        require(state.validSets[_rebalancingSetToken], "BID_WITH_INVALID_SET");
+
+        // Get amount of tokens to transfer to instantiate arrays
         uint256 totalComponents = rebalancingSetToken.getCombinedTokenArrayLength();
 
         // Instantiate arrays
@@ -62,9 +68,19 @@ contract CoreRebalanceAuction is
         (tokenArray, inflowUnitArray, outflowUnitArray) = rebalancingSetToken.placeBid(_quantity);
 
         // Retrieve tokens from bidder and deposit in vault for rebalancing set token
-        batchDepositInternal(msg.sender, _rebalancingSetToken, tokenArray, inflowUnitArray);
+        batchDepositInternal(
+            msg.sender,
+            _rebalancingSetToken,
+            tokenArray,
+            inflowUnitArray
+        );
 
         // Transfer ownership of tokens in vault from rebalancing set token to bidder
-        IVault(state.vault).batchTransferBalance(_rebalancingSetToken, msg.sender, tokenArray, outflowUnitArray);
+        IVault(state.vault).batchTransferBalance(
+            tokenArray,
+            _rebalancingSetToken,
+            msg.sender,
+            outflowUnitArray
+        );
     }
 }

@@ -152,9 +152,9 @@ contract CoreAccounting is
         nonReentrant
     {
         IVault(state.vault).transferBalance(
+            _token,
             msg.sender,
             _to,
-            _token,
             _quantity
         );
     }
@@ -179,7 +179,7 @@ contract CoreAccounting is
     {
         // Don't call transfer on deposit amounts = 0
         if (_quantity > 0) {
-                // Call TransferProxy contract to transfer user tokens to Vault
+            // Call TransferProxy contract to transfer user tokens to Vault
             ITransferProxy(state.transferProxy).transfer(
                 _token,
                 _quantity,

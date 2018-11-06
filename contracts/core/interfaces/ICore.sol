@@ -76,6 +76,19 @@ interface ICore {
         returns (bool);
 
     /**
+     * Return boolean indicating if address is a valid Rebalancing Price Library.
+     *
+     * @param  _priceLibrary    Price library address
+     * @return bool             Boolean indicating if valid Price Library
+     */
+    function validPriceLibraries(
+        address _priceLibrary
+    )
+        public
+        view
+        returns(bool);
+
+    /**
      * Set vaultAddress. Can only be set by owner of Core.
      *
      * @param  _vault   The address of the Vault
@@ -96,32 +109,41 @@ interface ICore {
         external;
 
     /**
-     * Add a factory to the mapping of tracked factories.
+     * Add or remove a factory to the mapping of tracked factories. Can only be set by
+     * owner of Core
      *
-     * @param  _factory   The address of the SetTokenFactory to enable
+     * @param  _factory   Address of the contract conforming to ISetFactory
+     * @param  _enabled   Enable or disable the factory
      */
-    function enableFactory(
-        address _factory
+    function registerFactory(
+        address _factory,
+        bool _enabled
     )
         external;
 
     /**
-     * Disable a factory in the mapping of tracked factories.
+     * Add or remove a Set to the mapping and array of tracked Sets. Can
+     * only be called by owner of Core.
      *
-     * @param  _factory   The address of the SetTokenFactory to disable
+     * @param  _set       The address of the Set
+     * @param  _enabled   Enable or disable the Set
      */
-    function disableFactory(
-        address _factory
+    function registerSet(
+        address _set,
+        bool _enabled
     )
         external;
 
     /**
-     * Disable a set token in the mapping of tracked set tokens.
+     * Adds or removes a price library to the mapping of tracked price libraries. Can only be set by
+     * owner of Core
      *
-     * @param  _set   The address of the SetToken to remove
+     * @param  _priceLibrary   Address of contract Price Library to enable or disable
+     * @param  _enabled        Whether the pricing library is enabled for use in proposal cycle
      */
-    function disableSet(
-        address _set
+    function setPriceLibraryEnabled(
+        address _priceLibrary,
+        bool _enabled
     )
         external;
 

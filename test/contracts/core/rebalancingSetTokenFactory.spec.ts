@@ -64,7 +64,7 @@ contract('RebalancingSetTokenFactory', accounts => {
 
     core = await coreWrapper.deployCoreAndDependenciesAsync();
     setTokenFactory = await coreWrapper.deploySetTokenFactoryAsync(core.address);
-    await coreWrapper.enableFactoryAsync(core, setTokenFactory);
+    await coreWrapper.registerFactoryAsync(core, setTokenFactory, true);
 
     const components = await erc20Wrapper.deployTokensAsync(2, deployerAccount);
     const componentAddresses = _.map(components, token => token.address);
@@ -78,7 +78,7 @@ contract('RebalancingSetTokenFactory', accounts => {
       naturalUnit,
     );
     rebalancingSetTokenFactory = await coreWrapper.deployRebalancingSetTokenFactoryAsync(core.address);
-    await coreWrapper.enableFactoryAsync(core, rebalancingSetTokenFactory);
+    await coreWrapper.registerFactoryAsync(core, rebalancingSetTokenFactory, true);
   });
 
   afterEach(async () => {
@@ -170,10 +170,29 @@ contract('RebalancingSetTokenFactory', accounts => {
       });
     });
 
-
     describe('when the set was not created through core', async () => {
       beforeEach(async () => {
         subjectComponents = [notSetTokenCreatedByCore];
+      });
+
+      it('should revert', async () => {
+        await expectRevertError(subject());
+      });
+    });
+
+    describe('when the components length is not 1', async () => {
+      beforeEach(async () => {
+        subjectComponents = [setToken.address, notSetTokenCreatedByCore];
+      });
+
+      it('should revert', async () => {
+        await expectRevertError(subject());
+      });
+    });
+
+    describe('when the units length is not 1', async () => {
+      beforeEach(async () => {
+        subjectUnits = [new BigNumber(1), new BigNumber(1)];
       });
 
       it('should revert', async () => {

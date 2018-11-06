@@ -52,10 +52,10 @@ contract('RebalancingSetToken', accounts => {
     deployerAccount,
     coreAccount,
     managerAccount,
-    factoryAccount,
     otherAccount,
     fakeTokenAccount,
     protocolAccount,
+    invalidAccount,
   ] = accounts;
 
   let rebalancingSetToken: RebalancingSetTokenContract;
@@ -89,6 +89,7 @@ contract('RebalancingSetToken', accounts => {
 
   beforeEach(async () => {
     blockchain.saveSnapshotAsync();
+
     transferProxy = await coreWrapper.deployTransferProxyAsync();
     vault = await coreWrapper.deployVaultAsync();
     coreMock = await coreWrapper.deployCoreMockAsync(transferProxy, vault);
@@ -97,7 +98,7 @@ contract('RebalancingSetToken', accounts => {
     constantAuctionPriceCurve = await rebalancingWrapper.deployConstantAuctionPriceCurveAsync(DEFAULT_AUCTION_PRICE);
 
     await coreWrapper.setDefaultStateAndAuthorizationsAsync(coreMock, vault, transferProxy, factory);
-    await coreWrapper.enableFactoryAsync(coreMock, rebalancingFactory);
+    await coreWrapper.registerFactoryAsync(coreMock, rebalancingFactory, true);
   });
 
   afterEach(async () => {
@@ -119,7 +120,7 @@ contract('RebalancingSetToken', accounts => {
     beforeEach(async () => {
       components = await erc20Wrapper.deployTokensAsync(1, deployerAccount);
 
-      subjectFactory = factoryAccount;
+      subjectFactory = rebalancingFactory.address;
       subjectManager = managerAccount;
       subjectInitialSet = components[0].address,
       subjectInitialUnitShares = DEFAULT_UNIT_SHARES;
@@ -230,9 +231,30 @@ contract('RebalancingSetToken', accounts => {
         await expectRevertError(subject());
       });
     });
+
     describe('when the rebalanceInterval is less than one day in seconds', async () => {
       beforeEach(async () => {
         subjectRebalanceInterval = new BigNumber(5000);
+      });
+
+      it('should revert', async () => {
+        await expectRevertError(subject());
+      });
+    });
+
+    describe('when the initial unit shares is 0', async () => {
+      beforeEach(async () => {
+        subjectInitialUnitShares = ZERO;
+      });
+
+      it('should revert', async () => {
+        await expectRevertError(subject());
+      });
+    });
+
+    describe('when the manager address is null', async () => {
+      beforeEach(async () => {
+        subjectManager = NULL_ADDRESS;
       });
 
       it('should revert', async () => {
@@ -257,7 +279,7 @@ contract('RebalancingSetToken', accounts => {
       const rebalanceFee = ZERO;
 
       rebalancingSetToken = await rebalancingWrapper.deployRebalancingSetTokenAsync(
-        factoryAccount,
+        rebalancingFactory.address,
         manager,
         initialSet,
         initialUnitShares,
@@ -299,7 +321,7 @@ contract('RebalancingSetToken', accounts => {
       const rebalanceFee = ZERO;
 
       rebalancingSetToken = await rebalancingWrapper.deployRebalancingSetTokenAsync(
-        factoryAccount,
+        rebalancingFactory.address,
         manager,
         initialSet,
         initialUnitShares,
@@ -411,7 +433,7 @@ contract('RebalancingSetToken', accounts => {
       const rebalanceFee = ZERO;
 
       const rebalancingFactory = await coreWrapper.deployRebalancingSetTokenFactoryAsync(coreAccount);
-      await coreWrapper.enableFactoryAsync(coreMock, rebalancingFactory);
+      await coreWrapper.registerFactoryAsync(coreMock, rebalancingFactory, true);
 
       rebalancingSetToken = await rebalancingWrapper.deployRebalancingSetTokenAsync(
         rebalancingFactory.address,
@@ -520,6 +542,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when mint is called from Rebalance state', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -680,6 +703,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when burn is called from Rebalance state', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -710,7 +734,7 @@ contract('RebalancingSetToken', accounts => {
       const rebalanceFee = ZERO;
 
       rebalancingSetToken = await rebalancingWrapper.deployRebalancingSetTokenAsync(
-        factoryAccount,
+        rebalancingFactory.address,
         manager,
         initialSet,
         initialUnitShares,
@@ -761,6 +785,7 @@ contract('RebalancingSetToken', accounts => {
       });
     });
   });
+
   describe('#propose', async () => {
     let subjectRebalancingToken: Address;
     let subjectAuctionLibrary: Address;
@@ -807,6 +832,12 @@ contract('RebalancingSetToken', accounts => {
       subjectAuctionPriceDivisor = ether(10);
       subjectCaller = managerAccount;
       subjectTimeFastForward = ONE_DAY_IN_SECONDS.add(1);
+
+      await rebalancingWrapper.setPriceLibraryEnabledAsync(
+        coreMock,
+        constantAuctionPriceCurve,
+        true,
+      );
     });
 
     async function subject(): Promise<string> {
@@ -901,6 +932,36 @@ contract('RebalancingSetToken', accounts => {
         });
       });
 
+      describe('but the auction library is not approved by Core', async () => {
+        beforeEach(async () => {
+          subjectAuctionLibrary = invalidAccount;
+        });
+
+        it('should revert', async () => {
+          await expectRevertError(subject());
+        });
+      });
+
+      describe('but the auction library is 0', async () => {
+        beforeEach(async () => {
+          subjectAuctionPriceDivisor = ZERO;
+        });
+
+        it('should revert', async () => {
+          await expectRevertError(subject());
+        });
+      });
+
+      describe('but the curve coefficient is 0', async () => {
+        beforeEach(async () => {
+          subjectCurveCoefficient = ZERO;
+        });
+
+        it('should revert', async () => {
+          await expectRevertError(subject());
+        });
+      });
+
       describe('but the proposed nextSet is not approved by Core', async () => {
         beforeEach(async () => {
           subjectRebalancingToken = fakeTokenAccount;
@@ -932,6 +993,7 @@ contract('RebalancingSetToken', accounts => {
 
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToProposeAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -963,6 +1025,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when propose is called from Rebalance state', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -1040,6 +1103,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when rebalance is called from Propose State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToProposeAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -1211,6 +1275,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when rebalance is called from Rebalance State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -1284,6 +1349,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when settleRebalance is called from Proposal State', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToProposeAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -1299,6 +1365,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when settleRebalance is called from Rebalance State and all currentSets are rebalanced', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
@@ -1448,6 +1515,7 @@ contract('RebalancingSetToken', accounts => {
     describe('when settleRebalance is called and there are more than minimumBid amount of sets left', async () => {
       beforeEach(async () => {
         await rebalancingWrapper.defaultTransitionToRebalanceAsync(
+          coreMock,
           rebalancingSetToken,
           nextSetToken.address,
           constantAuctionPriceCurve.address,
